@@ -4,7 +4,7 @@
 
 ## 在线体验
 
-🔗 **[fitness-ai.streamlit.app](https://touqiangguang21-debug-kunkun.streamlit.app)**
+🔗 **[fitness-ai.streamlit.app](https://c6yuhevxb6wpy5v2c24gq6.streamlit.app)**
 
 ## 功能介绍
 
