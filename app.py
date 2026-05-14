@@ -1,8 +1,12 @@
 import streamlit as st
 from llm import chat
-from prompts import training_plan_prompt, diet_plan_prompt
+from prompts import training_plan_prompt, diet_plan_prompt, food_analysis_prompt
+from rag import build_index
 
 st.set_page_config(page_title="健身AI助手", page_icon="💪", layout="centered")
+
+with st.spinner("正在加载知识库..."):
+    build_index()
 
 st.title("💪 健身AI助手")
 st.caption("训练计划 + 减脂外卖，一站搞定")
@@ -14,8 +18,11 @@ if "training_messages" not in st.session_state:
 if "diet_messages" not in st.session_state:
     st.session_state.diet_messages = None
     st.session_state.diet_system = None
+if "food_messages" not in st.session_state:
+    st.session_state.food_messages = None
+    st.session_state.food_system = None
 
-tab1, tab2 = st.tabs(["🏋️ 训练计划", "🥗 减脂外卖"])
+tab1, tab2, tab3 = st.tabs(["🏋️ 训练计划", "🥗 减脂外卖", "🍱 外卖分析"])
 
 
 def render_followup(system_key, messages_key, prefix):
@@ -114,3 +121,45 @@ with tab2:
         st.rerun()
 
     render_followup("diet_system", "diet_messages", "diet")
+
+# ── 外卖分析 ──────────────────────────────────────
+with tab3:
+    st.subheader("粘贴你附近的外卖商家")
+
+    restaurants = st.text_area(
+        "外卖商家列表（含菜品和价格）",
+        placeholder="例如：\n【老乡鸡】毛豆烧鸡套餐 28元、西红柿炒蛋套餐 22元\n【肯德基】鸡腿堡套餐 35元、原味鸡 15元/块\n【沙县小吃】鸡腿饭 16元、蒸饺 8元\n...",
+        height=200
+    )
+
+    col1, col2 = st.columns(2)
+    with col1:
+        goal3 = st.selectbox("今日目标", ["减脂", "增肌", "维持体重"])
+        weight3 = st.number_input("体重(kg)", 40, 150, 70, key="food_weight")
+    with col2:
+        budget3 = st.selectbox("预算范围", ["不限", "30元以内", "50元以内", "80元以内"])
+
+    if st.button("分析外卖方案", type="primary", use_container_width=True):
+        if not restaurants.strip():
+            st.warning("请先粘贴外卖商家列表")
+        else:
+            info = {
+                "weight": weight3,
+                "goal": goal3,
+                "restaurants": restaurants.strip()
+            }
+            if budget3 != "不限":
+                info["restaurants"] = f"预算限制：{budget3}\n\n" + info["restaurants"]
+
+            with st.spinner("AI正在分析外卖方案..."):
+                system, user = food_analysis_prompt(info)
+                result = chat(system, user)
+
+            st.session_state.food_system = system
+            st.session_state.food_messages = [
+                {"role": "user", "content": user},
+                {"role": "assistant", "content": result}
+            ]
+            st.rerun()
+
+    render_followup("food_system", "food_messages", "food")
